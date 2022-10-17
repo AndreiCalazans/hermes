@@ -60,6 +60,10 @@ class UTF16Stream {
     return *this;
   }
 
+  const char16_t *position() const {
+    return cur_;
+  }
+
   /// Begin capturing the stream of values. Once the capture is completed with a
   /// call to endCapture(), the captured stream can be viewed via an ArrayRef.
   void beginCapture();

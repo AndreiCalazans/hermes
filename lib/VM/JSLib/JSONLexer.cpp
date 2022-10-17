@@ -128,10 +128,11 @@ ExecutionStatus JSONLexer::scanNumber() {
 ExecutionStatus JSONLexer::scanString() {
   assert(*curCharPtr_ == '"');
   ++curCharPtr_;
+  const char16_t *start = curCharPtr_.position();
   bool hasEscape = false;
   // Ideally we don't have to use tmpStorage. In the case of a plain string with
-  // no escapes, we construct an ArrayRef at the end of scanning that points to
-  // the beginning and end of the string.
+  // no escapes, we just construct an ArrayRef at the end of scanning that
+  // points to the beginning and end of the string.
   SmallU16String<32> tmpStorage;
   curCharPtr_.beginCapture();
   // Make sure we don't somehow leave a dangling open capture.
@@ -141,8 +142,9 @@ ExecutionStatus JSONLexer::scanString() {
   while (curCharPtr_.hasChar()) {
     if (*curCharPtr_ == '"') {
       // End of string.
-      llvh::ArrayRef<char16_t> strRef =
-          hasEscape ? tmpStorage.arrayRef() : curCharPtr_.endCapture();
+      llvh::ArrayRef<char16_t> strRef = hasEscape
+          ? tmpStorage.arrayRef()
+          : llvh::makeArrayRef(start, curCharPtr_.position());
       ++curCharPtr_;
       // If the string exists in the identifier table, use that one.
       if (auto existing =
@@ -161,10 +163,10 @@ ExecutionStatus JSONLexer::scanString() {
       return error(u"U+0000 thru U+001F is not allowed in string");
     }
     if (*curCharPtr_ == u'\\') {
-      if (!hasEscape) {
+      if (!hasEscape && curCharPtr_.position() != start) {
         // This is the first escape character encountered, so append everything
         // we've seen so far to tmpStorage.
-        tmpStorage.append(curCharPtr_.endCapture());
+        tmpStorage.append(start, curCharPtr_.position());
       }
       hasEscape = true;
       ++curCharPtr_;
